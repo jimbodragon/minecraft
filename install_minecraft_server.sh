@@ -12,9 +12,9 @@ echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,
 
 mkdir -p /opt/minecraft/{backups,tools,server}
 cd tools && wget https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf mcrcon-0.7.1-linux-x86-64.tar.gz && rm mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find -type d -name "mcrcon*" -exec rm -rf {} \;
-wget https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar && cp server.jar /opt/minecraft/server
 
-cat <<EOF > /opt/minecraft/tools/start.sh
+
+cat <<EOS > /opt/minecraft/tools/start.sh
 #!/bin/bash
 function check_version_and_download()
 {
@@ -144,14 +144,14 @@ check_update
 revert_backup
 
 /usr/bin/java -d64 -Xmx8192M -Xms2048M -jar /opt/minecraft/server/server.jar nogui
-EOF
+EOS
 	
 if [ "$levelseed" != "" ]
 then
 	sed -i "s|#level-seed=|level-seed=$levelseed" /opt/minecraft/tools/start.sh
 fi
 
-cat <<EOF > /opt/minecraft/tools/backup.sh
+cat <<EOS > /opt/minecraft/tools/backup.sh
 #!/bin/bash
 
 function rcon {
@@ -173,7 +173,7 @@ then
         ## Delete older backups
         ##find /opt/minecraft/backups/ -type f -mtime +7 -name '*.gz' -delete
 fi
-EOF
+EOS
 
 chmod ug+x /opt/minecraft/tools/*.sh
 ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P "" && sshkey=$(cat /opt/minecraft/.ssh/id_rsa.pub) && ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
@@ -181,9 +181,9 @@ ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P "" && sshkey=$(cat /opt/mi
 chown minecraft:minecraft /opt/minecraft/
 
 echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh" > /etc/cron.d/minecraft_backup
-echo -e "minecraft ALL=(root) NOPASSWD: /usr/bin/mount /opt/minecraft/server" > /etc/sudoers.d/minecraft
+echo "minecraft ALL=(root) NOPASSWD: /usr/bin/mount /opt/minecraft/server" > /etc/sudoers.d/minecraft
 
-cat <<EOF > /etc/systemd/system/minecraft.service
+cat <<EOS > /etc/systemd/system/$minecraftname.service
 [Unit]
 Description=Minecraft Server for $minecraftname
 After=network.target
@@ -203,6 +203,6 @@ ExecStop=/opt/minecraft/tools/mcrcon -H 127.0.0.1 -P 23888 -p $rconpassword stop
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOS
 
 systemctl daemon-reload
