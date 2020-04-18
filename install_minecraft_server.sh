@@ -9,6 +9,7 @@ function check_version_and_download()
 	if [ \$1 > \$2 ]
 	then
 		wget -O /opt/minecraft/server/server.jar \$3
+		echo "\$4" > /opt/minecraft/server/server.version
 	fi
 }
 
@@ -26,16 +27,16 @@ function check_update()
 	latest_minor_version=\$(echo "\$webversion" | cut -d '.' -f 2)
 	latest_bugfix_version=\$(echo "\$webversion" | cut -d '.' -f 3)
 	
-	if [ $latest_major_version -eq $major_version ]
+	if [ \$latest_major_version -eq \$major_version ]
 	then
 		if [ \$latest_minor_version -eq \$minor_version ]
 		then
-			check_version_and_download \$latest_bugfix_version \$bugfix_version \$downloadlink
+			check_version_and_download \$latest_bugfix_version \$bugfix_version \$downloadlink \$webversion
 		else
-			check_version_and_download \$latest_minor_version \$minor_version \$downloadlink
+			check_version_and_download \$latest_minor_version \$minor_version \$downloadlink \$webversion
 		fi
 	else
-		check_version_and_download \$latest_major_version \$major_version \$downloadlink
+		check_version_and_download \$latest_major_version \$major_version \$downloadlink \$webversion
 	fi
 }
 
@@ -132,7 +133,7 @@ check_server
 check_update
 revert_backup
 
-/usr/bin/java -server -XX:ParallelGCThreads=2 -XX:+AggressiveOpts -XX:InitiatingHeapOccupancyPercent=35 -XX:G1ReservePercent=15 -XX:+UseCompressedOops -XX:+UseG1GC -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:InitiatingHeapOccupancyPercent=10 -XX:G1MixedGCLiveThresholdPercent=50 -Xmx8192M -Xms256M -jar /opt/minecraft/server/server.jar nogui
+/usr/bin/java -server -XX:ParallelGCThreads=2 -XX:+AggressiveOpts -XX:InitiatingHeapOccupancyPercent=35 -XX:G1ReservePercent=15 -XX:+UseCompressedOops -XX:+UseG1GC -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:InitiatingHeapOccupancyPercent=10 -XX:G1MixedGCLiveThresholdPercent=50 -Xmx8192M -Xms256M -Djava.net.preferIPv4Stack=true -jar /opt/minecraft/server/server.jar nogui
 EOS
 	
 	if [ "$1" != "" ]
@@ -203,7 +204,7 @@ read -p 'Minecraft level seed: ' levelseed
 
 echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed"
 
-apt-get install openjdk-11-jre-headless htop sudo
+apt-get install openjdk-11-jre-headless htop sudo  net-tools
 useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
 echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=2048M   0 0" >> /etc/fstab
 
