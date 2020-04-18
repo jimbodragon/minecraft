@@ -16,11 +16,43 @@ wget https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c63
 
 '
 
+<a href="https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar" aria-label="mincraft version" data-bi-id="n1c1c1c2c1c1m1r1a3" data-bi-name="minecraft_server.1.15.2.jar" data-bi-type="text">minecraft_server.1.15.2.jar</a>
+
 cat <<EOF > /opt/minecraft/tools/start.sh
 #!/bin/bash
+function check_version_and_download()
+{
+	if [ $1 > $2 ]
+	then
+		wget -O /opt/minecraft/server/server.jar $3
+	fi
+}
+
 function check_update()
 {
-	echo "Check minecraft server update at https://www.minecraft.net/fr-ca/download/server/"
+	major_version=$(cut -d '.' -f 1 /opt/minecraft/server/server.version)
+	minor_version=$(cut -d '.' -f 2 /opt/minecraft/server/server.version)
+	bugfix_version=$(cut -d '.' -f 3 /opt/minecraft/server/server.version)
+	
+	webinfo=$(wget -q -O /dev/stdout https://www.minecraft.net/fr-ca/download/server/ | grep 'minecraft_server.' > webinfo)
+	webversion=$(cat webinfo | tail -n 1 | awk -F 'minecraft_server.' '{print $2}' | awk -F '.jar' '{print $1}')
+	downloadlink=$(cat webinfo | awk -F 'href="' '{print $2}' | cut -d '"' -f 1)
+	
+	latest_major_version=$(echo "$webversion" | cut -d '.' -f 1)
+	latest_minor_version=$(echo "$webversion" | cut -d '.' -f 2)
+	latest_bugfix_version=$(echo "$webversion" | cut -d '.' -f 3)
+	
+	if [ $latest_major_version -eq $major_version ]
+	then
+		if [ $latest_minor_version -eq $minor_version ]
+		then
+			check_version_and_download $latest_bugfix_version $bugfix_version $downloadlink
+		else
+			check_version_and_download $latest_minor_version $minor_version $downloadlink
+		fi
+	else
+		check_version_and_download $latest_major_version $major_version $downloadlink
+	fi
 }
 
 function check_properties()
@@ -81,6 +113,8 @@ prevent-proxy-connections=false
 enable-rcon=true
 motd=La Communaute de $minecraftname
 EOF
+
+	echo "0.0.0" > /opt/minecraft/server/server.version
 	fi
 	
 	if [ "$levelseed" != "" ]
