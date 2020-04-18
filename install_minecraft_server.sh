@@ -1,10 +1,10 @@
 #/bin/bash
 
-minecraftname=$1
-rconpassword=$2
-dropboxserver=$3
-dropboxuser=$4
-levelseed=$5
+read -p 'Minecraft Instance name: ' minecraftname
+read -p 'Minecraft mcrcon password: ' rconpassword
+read -p 'Minecraft Dropbox server for backup: ' dropboxserver
+read -p 'Minecraft Dropbox user for backup: ' dropboxuser
+read -p 'Minecraft level seed: ' levelseed
 
 apt-get install openjdk-11-jre-headless htop sudo
 useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
@@ -13,10 +13,6 @@ echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,
 mkdir -p /opt/minecraft/{backups,tools,server}
 cd tools && wget https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf mcrcon-0.7.1-linux-x86-64.tar.gz && rm mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find -type d -name "mcrcon*" -exec rm -rf {} \;
 wget https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar && cp server.jar /opt/minecraft/server
-
-'
-
-<a href="https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar" aria-label="mincraft version" data-bi-id="n1c1c1c2c1c1m1r1a3" data-bi-name="minecraft_server.1.15.2.jar" data-bi-type="text">minecraft_server.1.15.2.jar</a>
 
 cat <<EOF > /opt/minecraft/tools/start.sh
 #!/bin/bash
@@ -112,14 +108,10 @@ use-native-transport=true
 prevent-proxy-connections=false
 enable-rcon=true
 motd=La Communaute de $minecraftname
+#level-seed=
 EOF
 
-	echo "0.0.0" > /opt/minecraft/server/server.version
-	fi
-	
-	if [ "$levelseed" != "" ]
-	then
-		echo "level-seed=$levelseed" > /opt/minecraft/server/server.properties
+		echo "0.0.0" > /opt/minecraft/server/server.version
 	fi
 }
 
@@ -153,6 +145,11 @@ revert_backup
 
 /usr/bin/java -d64 -Xmx8192M -Xms2048M -jar /opt/minecraft/server/server.jar nogui
 EOF
+	
+if [ "$levelseed" != "" ]
+then
+	sed -i "s|#level-seed=|level-seed=$levelseed" /opt/minecraft/tools/start.sh
+fi
 
 cat <<EOF > /opt/minecraft/tools/backup.sh
 #!/bin/bash
