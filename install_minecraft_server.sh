@@ -8,7 +8,7 @@ function check_version_and_download()
 {
 	if [ \$1 > \$2 ]
 	then
-		wget -O /opt/minecraft/server/server.jar $\3
+		wget -O /opt/minecraft/server/server.jar \$3
 	fi
 }
 
@@ -160,7 +160,7 @@ then
         tar -cvpzf $backup_file /opt/minecraft/server
         rcon "save-on"
 
-        scp $backup_file $3@$4:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
+        scp \$backup_file $3@$4:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
 
         ## Delete older backups
         ##find /opt/minecraft/backups/ -type f -mtime +7 -name '*.gz' -delete
