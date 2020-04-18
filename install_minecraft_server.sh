@@ -14,9 +14,9 @@ function check_version_and_download()
 
 function check_update()
 {
-	major_version=$(cut -d '.' -f 1 /opt/minecraft/server/server.version)
-	minor_version=$(cut -d '.' -f 2 /opt/minecraft/server/server.version)
-	bugfix_version=$(cut -d '.' -f 3 /opt/minecraft/server/server.version)
+	major_version=\$(cut -d '.' -f 1 /opt/minecraft/server/server.version)
+	minor_version=\$(cut -d '.' -f 2 /opt/minecraft/server/server.version)
+	bugfix_version=\$(cut -d '.' -f 3 /opt/minecraft/server/server.version)
 	
 	webinfo=\$(wget -q -O /dev/stdout https://www.minecraft.net/fr-ca/download/server/ | grep 'minecraft_server.' > webinfo)
 	webversion=\$(cat webinfo | tail -n 1 | awk -F 'minecraft_server.' '{print \$2}' | awk -F '.jar' '{print \$1}')
@@ -105,8 +105,8 @@ EOF
 
 function check_mount()
 {
-        num_mount=$(df -h | grep /opt/minecraft/server | wc -l)
-        if [ $num_mount -eq 0 ]
+        num_mount=\$(df -h | grep /opt/minecraft/server | wc -l)
+        if [ \$num_mount -eq 0 ]
         then
                 sudo /usr/bin/mount /opt/minecraft/server
                 return 0
@@ -120,6 +120,7 @@ function revert_backup()
         cd /opt/minecraft/server
         backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
 		if [ -f \$backup_file ]
+		then
 			tar -xzf \$backup_file
 			mv /opt/minecraft/server/opt/minecraft/server/* /opt/minecraft/server/
 			rm -rf /opt/minecraft/server/opt
