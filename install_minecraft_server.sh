@@ -11,7 +11,7 @@ useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
 echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=2048M   0 0" >> /etc/fstab
 
 mkdir -p /opt/minecraft/{backups,tools,server}
-cd tools && wget https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf mcrcon-0.7.1-linux-x86-64.tar.gz && rm mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find -type d -name "mcrcon*" -exec rm -rf {} \;
+wget https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf mcrcon-0.7.1-linux-x86-64.tar.gz && rm mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find -type d -name "mcrcon*" -exec rm -rf {} \;
 
 
 cat <<EOS > /opt/minecraft/tools/start.sh
