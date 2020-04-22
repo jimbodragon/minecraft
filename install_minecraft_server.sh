@@ -140,7 +140,7 @@ EOS
 	then
 		sed -i "s|#level-seed=|level-seed=$3|g" /opt/minecraft/tools/start.sh
 	fi
-	let "maxmemory = $(free -m | grep Mem | awk '{print $2}') - 1024"
+	let "maxmemory = $(free -m | grep Mem | awk '{print $2}') - 3072"
 	sed -i "s|-Xmx8192M|-Xmx$(echo $maxmemory)M|g" /opt/minecraft/tools/start.sh
 }
 
@@ -153,14 +153,14 @@ function rcon {
   /opt/minecraft/tools/mcrcon -H 127.0.0.1 -P 23888 -p $2 "\$1"
 }
 
-if [ $(ps aux | grep /opt/minecraft/server/server.jar | grep -v grep | wc -l) -eq 1 ]
+if [ \$(ps aux | grep /opt/minecraft/server/server.jar | grep -v grep | wc -l) -eq 1 ]
 then
 
         backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
 
         rcon "save-off"
         rcon "save-all"
-        tar -cvpzf $backup_file /opt/minecraft/server
+        tar -cvpzf \$backup_file /opt/minecraft/server
         rcon "save-on"
 
         scp \$backup_file $3@$4:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
@@ -194,6 +194,8 @@ ExecStop=/opt/minecraft/tools/mcrcon -H 127.0.0.1 -P 23888 -p $2 stop
 [Install]
 WantedBy=multi-user.target
 EOS
+
+	systemctl enable $1.service
 }
 
 read -p 'Minecraft Instance name: ' minecraftname
@@ -201,6 +203,7 @@ read -p 'Minecraft mcrcon password: ' rconpassword
 read -p 'Minecraft Dropbox server for backup: ' dropboxserver
 read -p 'Minecraft Dropbox user for backup: ' dropboxuser
 read -p 'Minecraft level seed: ' levelseed
+backuplog=/var/log/$minecraftname.backup.log
 
 echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed"
 
@@ -211,7 +214,9 @@ echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,
 mkdir -p /opt/minecraft/{backups,tools,server}
 wget -O /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz && rm /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
 
-echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh" > /etc/cron.d/minecraft_backup
+echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh > $backuplog" > /etc/cron.d/minecraft_backup
+echo > $backuplog
+chown minecraft:minecraft $backuplog
 echo "minecraft ALL=(root) NOPASSWD: /usr/bin/mount /opt/minecraft/server" > /etc/sudoers.d/minecraft
 
 create_start $minecraftname $rconpassword $levelseed
