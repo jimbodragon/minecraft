@@ -18,15 +18,15 @@ function check_update()
 	major_version=\$(cut -d '.' -f 1 /opt/minecraft/server/server.version)
 	minor_version=\$(cut -d '.' -f 2 /opt/minecraft/server/server.version)
 	bugfix_version=\$(cut -d '.' -f 3 /opt/minecraft/server/server.version)
-	
+
 	webinfo=\$(wget -q -O /dev/stdout https://www.minecraft.net/fr-ca/download/server/ | grep 'minecraft_server.' > webinfo)
 	webversion=\$(cat webinfo | tail -n 1 | awk -F 'minecraft_server.' '{print \$2}' | awk -F '.jar' '{print \$1}')
 	downloadlink=\$(cat webinfo | awk -F 'href="' '{print \$2}' | cut -d '"' -f 1)
-	
+
 	latest_major_version=\$(echo "\$webversion" | cut -d '.' -f 1)
 	latest_minor_version=\$(echo "\$webversion" | cut -d '.' -f 2)
 	latest_bugfix_version=\$(echo "\$webversion" | cut -d '.' -f 3)
-	
+
 	if [ \$latest_major_version -eq \$major_version ]
 	then
 		if [ \$latest_minor_version -eq \$minor_version ]
@@ -44,13 +44,13 @@ function check_server()
 {
 	#https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar
 	#1.15.2: https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar
-	
+
 	if [ ! -f /opt/minecraft/server/eula.txt ]
 	then
 		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > /opt/minecraft/server/eula.txt
 
 	fi
-	
+
 	if [ ! -f /opt/minecraft/server/server.properties ]
 	then
 		cat <<EOF > /opt/minecraft/server/server.properties
@@ -135,7 +135,7 @@ revert_backup
 
 /usr/bin/java -server -XX:ParallelGCThreads=2 -XX:+AggressiveOpts -XX:InitiatingHeapOccupancyPercent=35 -XX:G1ReservePercent=15 -XX:+UseCompressedOops -XX:+UseG1GC -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:InitiatingHeapOccupancyPercent=10 -XX:G1MixedGCLiveThresholdPercent=50 -Xmx8192M -Xms256M -Djava.net.preferIPv4Stack=true -jar /opt/minecraft/server/server.jar nogui
 EOS
-	
+
 	if [ "$1" != "" ]
 	then
 		sed -i "s|#level-seed=|level-seed=$3|g" /opt/minecraft/tools/start.sh
