@@ -163,7 +163,7 @@ then
         tar -cvpzf \$backup_file /opt/minecraft/server
         rcon "save-on"
 
-        scp \$backup_file $3@$4:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
+        scp \$backup_file $4@$3:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
 
         ## Delete older backups
         ##find /opt/minecraft/backups/ -type f -mtime +7 -name '*.gz' -delete
@@ -228,3 +228,4 @@ chown -R minecraft:minecraft /opt/minecraft/
 su - minecraft -c '/usr/bin/ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P ""' && sshkey=$(cat /opt/minecraft/.ssh/id_rsa.pub) && ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
 
 systemctl daemon-reload
+systemctl start $minecraftname.service
