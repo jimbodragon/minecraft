@@ -207,7 +207,7 @@ backuplog=/var/log/$minecraftname.backup.log
 
 echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed"
 
-apt-get install openjdk-11-jre-headless htop sudo  net-tools
+apt-get install openjdk-17-jre-headless htop sudo  net-tools
 useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
 echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=4096M   0 0" >> /etc/fstab
 
