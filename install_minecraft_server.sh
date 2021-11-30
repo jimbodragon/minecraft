@@ -1,10 +1,19 @@
 #/bin/bash
 
-minecraft_home="/opt/minecraft"
+minecraft_home="$minecraft_folder"
 
 function create_start()
 {
-	cat <<EOS > /opt/minecraft/tools/start.sh
+	minecraftname="$1"
+	rconpassword="$2"
+	server_version="$3"
+	use_forge="$4"
+	minecraft_folder="$5"
+	minecraft_user="$6"
+	levelseed="$7"
+	fs_ram_mb="$8"
+
+	cat <<EOS > $minecraft_folder/tools/start.sh
 #!/bin/bash
 function check_version_and_download()
 {
@@ -12,17 +21,20 @@ function check_version_and_download()
 	then
 		if [ \$1 > \$2 ]
 		then
-			wget -O /opt/minecraft/server/server.jar \$3
-			echo "\$4" > /opt/minecraft/server/server.version
+			wget -O $minecraft_folder/server/server.jar \$3
+			echo "\$4" > $minecraft_folder/server/server.version
 		fi
 	fi
 }
 
 function check_update()
 {
-	major_version=\$(cut -d '.' -f 1 /opt/minecraft/server/server.version 2>&1)
-	minor_version=\$(cut -d '.' -f 2 /opt/minecraft/server/server.version 2>&1)
-	bugfix_version=\$(cut -d '.' -f 3 /opt/minecraft/server/server.version 2>&1)
+	server_version="$server_version"
+	use_forge="$use_forge"
+
+	major_version=\$(cut -d '.' -f 1 $minecraft_folder/server/server.version 2>&1)
+	minor_version=\$(cut -d '.' -f 2 $minecraft_folder/server/server.version 2>&1)
+	bugfix_version=\$(cut -d '.' -f 3 $minecraft_folder/server/server.version 2>&1)
 
 	rm version_manifest.json
 	wget https://launchermeta.mojang.com/mc/game/version_manifest.json
@@ -34,13 +46,13 @@ function check_update()
 	latest_minor_version=\$(echo "\$latest_version" | cut -d '.' -f 2)
 	latest_bugfix_version=\$(echo "\$latest_version" | cut -d '.' -f 3)
 
-	if [ "\$latest_major_version" -eq \$major_version" ]
+	if [ "\$latest_major_version" -eq "\$major_version" ]
 	then
-		if [ "\$latest_minor_version" -eq \$minor_version" ]
+		if [ "\$latest_minor_version" -eq "\$minor_version" ]
 		then
-			check_version_and_download "\$latest_bugfix_version" \$bugfix_version" \$downloadlink" "\$latest_version"
+			check_version_and_download "\$latest_bugfix_version" "\$bugfix_version" "\$downloadlink" "\$latest_version"
 		else
-			check_version_and_download "\$latest_minor_version" \$minor_version" \$downloadlink" "\$latest_version"
+			check_version_and_download "\$latest_minor_version" "\$minor_version" "\$downloadlink" "\$latest_version"
 		fi
 	else
 		check_version_and_download "\$latest_major_version" "\$major_version" "\$downloadlink" "\$latest_version"
@@ -49,16 +61,16 @@ function check_update()
 
 function check_server()
 {
-	if [ ! -f /opt/minecraft/server/eula.txt ]
+	if [ ! -f $minecraft_folder/server/eula.txt ]
 	then
-		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > /opt/minecraft/server/eula.txt
+		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > $minecraft_folder/server/eula.txt
 
 	fi
 
-	if [ ! -f /opt/minecraft/server/server.properties ]
+	if [ ! -f $minecraft_folder/server/server.properties ]
 	then
-		cat <<EOF > /opt/minecraft/server/server.properties
-#Minecraft server properties for $1
+		cat <<EOF > $minecraft_folder/server/server.properties
+#Minecraft server properties for $minecraftname
 spawn-protection=16
 max-tick-time=60000
 query.port=25565
@@ -93,31 +105,31 @@ view-distance=10
 resource-pack=
 spawn-animals=true
 white-list=false
-rcon.password=$2
+rcon.password=$rconpassword
 generate-structures=true
 max-build-height=256
 online-mode=false
 use-native-transport=true
 prevent-proxy-connections=false
 enable-rcon=true
-motd=La Communaute de $1
+motd=La Communaute de $minecraftname
 #level-seed=
 EOF
 		if [ "\$1" == ""]
 		then
-			echo "\$1" > /opt/minecraft/server/server.version
+			echo "\$1" > $minecraft_folder/server/server.version
 		else
-			echo "0.0.0" > /opt/minecraft/server/server.version
+			echo "0.0.0" > $minecraft_folder/server/server.version
 		fi
 	fi
 }
 
 function check_mount()
 {
-        num_mount=\$(df -h | grep /opt/minecraft/server | wc -l)
+        num_mount=\$(df -h | grep $minecraft_folder/server | wc -l)
         if [ \$num_mount -eq 0 ]
         then
-                sudo /usr/bin/mount /opt/minecraft/server
+                sudo /usr/bin/mount $minecraft_folder/server
                 return 0
         fi
 
@@ -126,13 +138,13 @@ function check_mount()
 
 function revert_backup()
 {
-    cd /opt/minecraft/server
-    backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
+    cd $minecraft_folder/server
+    backup_file="$minecraft_folder/backups/server-$1-minecraft.tar.gz"
 		if [ -f \$backup_file ]
 		then
 			tar -xzf \$backup_file
-			mv /opt/minecraft/server/opt/minecraft/server/* /opt/minecraft/server/
-			rm -rf /opt/minecraft/server/opt
+			mv $minecraft_folder/server$minecraft_folder/server/* $minecraft_folder/server/
+			rm -rf $minecraft_folder/server/opt
 		fi
 }
 
@@ -141,49 +153,55 @@ check_server
 check_update
 revert_backup
 
-/usr/bin/java -server -XX:ParallelGCThreads=2 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1ReservePercent=15 -XX:+UseCompressedOops -XX:+UseG1GC -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:InitiatingHeapOccupancyPercent=10 -XX:G1MixedGCLiveThresholdPercent=50 -Xmx8192M -Xms256M -Djava.net.preferIPv4Stack=true -jar /opt/minecraft/server/server.jar nogui
+/usr/bin/java -server -XX:ParallelGCThreads=2 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1ReservePercent=15 -XX:+UseCompressedOops -XX:+UseG1GC -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:InitiatingHeapOccupancyPercent=10 -XX:G1MixedGCLiveThresholdPercent=50 -Xmx8192M -Xms256M -Djava.net.preferIPv4Stack=true -jar $minecraft_folder/server/server.jar nogui
 EOS
 
-	if [ "$1" != "" ]
+	if [ "$levelseed" != "" ]
 	then
-		sed -i "s|#level-seed=|level-seed=$3|g" /opt/minecraft/tools/start.sh
+		sed -i "s|#level-seed=|level-seed=$levelseed|g" $minecraft_folder/tools/start.sh
 	fi
-	let "maxmemory = $(free -m | grep Mem | awk '{print $2}') - 3072"
-	sed -i "s|-Xmx8192M|-Xmx$(echo $maxmemory)M|g" /opt/minecraft/tools/start.sh
+	let "maxmemory = $(free -m | grep Mem | awk '{print $2}') - $fs_ram_mb"
+	sed -i "s|-Xmx8192M|-Xmx$(echo $maxmemory)M|g" $minecraft_folder/tools/start.sh
 }
 
 function create_backup_tool()
 {
-	cat <<EOS > /opt/minecraft/tools/backup.sh
+	$minecraftname="$1"
+	rconpassword="$2"
+	dropboxserver="$3"
+	dropboxuser="$4"
+	cat <<EOS > $minecraft_folder/tools/backup.sh
 #!/bin/bash
 
 function rcon {
-  /opt/minecraft/tools/mcrcon -H 127.0.0.1 -P 23888 -p $2 "\$1"
+  $minecraft_folder/tools/mcrcon -H 127.0.0.1 -P 23888 -p $rconpassword "\$1"
 }
 
-if [ \$(ps aux | grep /opt/minecraft/server/server.jar | grep -v grep | wc -l) -eq 1 ]
+if [ \$(ps aux | grep $minecraft_folder/server/server.jar | grep -v grep | wc -l) -eq 1 ]
 then
 
-        backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
+        backup_file="$minecraft_folder/backups/server-$minecraftname-minecraft.tar.gz"
 
         rcon "save-off"
         rcon "save-all"
-        tar -cvpzf \$backup_file /opt/minecraft/server
+        tar -cvpzf \$backup_file $minecraft_folder/server
         rcon "save-on"
 
-        scp \$backup_file $4@$3:/home/$dropboxuser/Dropbox/minecraftBackup/$1/
+        scp \$backup_file $dropboxuser@$dropboxserver:/home/$dropboxuser/Dropbox/minecraftBackup/$minecraftname/
 
         ## Delete older backups
-        ##find /opt/minecraft/backups/ -type f -mtime +7 -name '*.gz' -delete
+        ##find $minecraft_folder/backups/ -type f -mtime +7 -name '*.gz' -delete
 fi
 EOS
 }
 
 function create_service()
 {
-	cat <<EOS > /etc/systemd/system/$1.service
+	minecraftname="$1"
+	rconpassword="$2"
+	cat <<EOS > /etc/systemd/system/$minecraftname.service
 [Unit]
-Description=Minecraft Server for $1
+Description=Minecraft Server for $minecraftname
 After=network.target
 
 [Service]
@@ -195,50 +213,97 @@ ProtectHome=true
 ProtectSystem=full
 PrivateDevices=true
 NoNewPrivileges=true
-WorkingDirectory=/opt/minecraft/server
-ExecStart=/opt/minecraft/tools/start.sh
-ExecStop=/opt/minecraft/tools/mcrcon -H 127.0.0.1 -P 23888 -p $2 stop
+WorkingDirectory=$minecraft_folder/server
+ExecStart=$minecraft_folder/tools/start.sh
+ExecStop=$minecraft_folder/tools/mcrcon -H 127.0.0.1 -P 23888 -p $rconpassword stop
 
 [Install]
 WantedBy=multi-user.target
 EOS
 
-	systemctl enable $1.service
+	systemctl enable $minecraftname.service
 }
 
-read -p 'Minecraft Instance name: ' minecraftname
-read -p 'Minecraft mcrcon password: ' rconpassword
-read -p 'Minecraft Dropbox server for backup: ' dropboxserver
-read -p 'Minecraft Dropbox user for backup: ' dropboxuser
-read -p 'Minecraft level seed: ' levelseed
-read -p 'Minecraft server version (empty for latest): ' server_version
-read -p 'Minecraft server forge version if any: ' forge_server_version
-read -p 'Minecraft use latest version if any: ' use_latest
-read -p 'Minecraft use latest version if any: ' mcron_version
-backuplog=/var/log/$minecraftname.backup.log
+function validate_parameter()
+{
+	parameter_name="$1"
+	parameter_value="$(eval "echo \$$parameter_name")"
+	default_value="$2"
 
-echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed\nserver_version = $server_version\nforge_server_version = $forge_server_version\nmcron_version = $mcron_version"
+	if [ "$parameter_name" == "minecraftname" ]
+		message="Minecraft -> $3"
+	else
+		message="$minecraftname -> $3: "
+	fi
 
-apt-get install openjdk-17-jre-headless htop sudo  net-tools
-useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
-echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=4096M   0 0" >> /etc/fstab
+	require="$4"
 
-mkdir -p /opt/minecraft/{backups,tools,server}
-wget -O "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" "https://github.com/Tiiffi/mcrcon/releases/download/v$mcron_version/mcrcon-$mcron_version-linux-x86-64.tar.gz" && tar -xzf "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && rm "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
+	validate_parameter "$message " $parameter_name
 
-echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh > \"$backuplog\"" > /etc/cron.d/minecraft_backup
+	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
+	then
+		if [ "$default_value" == "" ]
+		then
+			echo "parameter $parameter_name is require"
+			echo "Exiting"
+			exit 1
+		fi
+		$parameter_name=$default_value
+	fi
+}
+
+default_server_version="latest"
+default_use_forge="false"
+default_mcron_version="0.7.2"
+default_minecraft_folder="/opt/minecraft"
+default_openjdk_version="18"
+default_minecraft_user="minecraft"
+default_fs_ram_mb="4096"
+
+validate_parameter minecraftname "" "Minecraft Instance name" true
+validate_parameter rconpassword "" "Minecraft mcrcon password" true
+validate_parameter server_version "$default_server_version" "server version (empty for $default_server_version)"
+validate_parameter use_forge "$default_use_forge" "use forge server (true to activate)"
+validate_parameter minecraft_folder "$default_minecraft_folder" "install folder (empty for$default_minecraft_folder)"
+validate_parameter minecraft_user "$default_minecraft_user" "user (empty for $default_minecraft_user)"
+
+validate_parameter openjdk_version "$default_openjdk_version" "openjdk version (empty for $default_openjdk_version)"
+validate_parameter mcron_version "$default_mcron_version" "mcron_version (empty for $default_mcron_version)"
+
+validate_parameter fs_ram_mb "$default_fs_ram_mb" "size of ram fs for minecraft folder (empty for $default_fs_ram_mb)"
+
+validate_parameter levelseed "" "level seed"
+
+validate_parameter dropboxserver "" "Dropbox server for backup"
+validate_parameter dropboxuser "" "Dropbox user for backup"
+
+backuplog="$minecraft_folder/log/$minecraftname.backup.log"
+
+echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed\nserver_version = $server_version\nuse_forge = $use_forge\nmcron_version = $mcron_version\nminecraft_folder = $minecraft_folder\nopenjdk_version = $openjdk_version\nbackuplog = $backuplog"
+
+apt-get install "openjdk-$openjdk_version-jre-headless" "htop" "sudo" "net-tools"
+useradd -r -m -U -d $minecraft_folder -s /bin/bash $minecraft_user
+echo -e "tmpfs       $minecraft_folder/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=$default_fs_ram_mb\M   0 0" >> /etc/fstab
+
+mkdir -p $minecraft_folder/{backups,tools,server,logs}
+wget -O "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" "https://github.com/Tiiffi/mcrcon/releases/download/v$mcron_version/mcrcon-$mcron_version-linux-x86-64.tar.gz" && tar -xzf "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && rm "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && find -name mcrcon -exec cp {} $minecraft_folder/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
+
+echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * $minecraft_user $minecraft_folder/tools/backup.sh > \"$backuplog\"" > /etc/cron.d/$minecraftname_backup
 echo > "$backuplog"
-chown minecraft:minecraft "$backuplog"
-echo "minecraft ALL=(root) NOPASSWD: /usr/bin/mount /opt/minecraft/server" > /etc/sudoers.d/minecraft
+chown $minecraft_user:$minecraft_user "$backuplog"
+echo "$minecraft_user ALL=(root) NOPASSWD: /usr/bin/mount $minecraft_folder/server" > /etc/sudoers.d/$minecraft_user
 
-create_start "$minecraftname" "$rconpassword" "$levelseed" "$server_version" "$forge_server_version" "$use_latest"
+create_start "$minecraftname" "$rconpassword" "$server_version" "$use_forge" "$minecraft_folder" "$minecraft_user" "$levelseed" "$fs_ram_mb"
 create_backup_tool "$minecraftname" "$rconpassword" "$dropboxserver" "$dropboxuser"
 create_service "$minecraftname" "$rconpassword"
 
-chmod -R ug+x /opt/minecraft/tools/*.sh
-chown -R minecraft:minecraft /opt/minecraft/
+chmod -R ug+x $minecraft_folder/tools/*.sh
+chown -R $minecraft_user:$minecraft_user $minecraft_folder/
+
 echo "Enter password for $dropboxuser@$dropboxserver"
-su - minecraft -c "/usr/bin/ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P ''" && sshkey=$(cat /opt/minecraft/.ssh/id_rsa.pub) && ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
+su - $minecraft_user -c "/usr/bin/ssh-keygen -q -t rsa -f $minecraft_folder/.ssh/id_rsa -P ''"
+sshkey=$(cat $minecraft_folder/.ssh/id_rsa.pub)
+ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
 
 systemctl daemon-reload
 systemctl start $minecraftname.service
