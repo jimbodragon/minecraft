@@ -267,12 +267,10 @@ function validate_parameter()
 		exit 1
 	elif [ "$parameter_value" == "" ]
 	then
-		echo "parameter $parameter_name is nil"
+		echo "not require parameter $parameter_name is nil"
 		echo "Exiting"
 		exit 2
 	fi
-
-	$parameter_name=$default_value
 }
 
 function create_response()
