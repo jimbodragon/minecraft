@@ -260,6 +260,11 @@ function validate_parameter()
 		parameter_value="$(eval "echo \$$parameter_name")"
 	fi
 
+	if [ "$parameter_value" == "" ]
+	then
+		$parameter_value="$default_value"
+	fi
+
 	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
 	then
 		echo "parameter $parameter_name is require"
