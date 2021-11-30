@@ -255,7 +255,7 @@ function validate_parameter()
 
 	require="$4"
 
-	validate_parameter "$message " $parameter_name
+	read -p "$message" $parameter_name
 
 	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
 	then
@@ -267,6 +267,39 @@ function validate_parameter()
 		fi
 		$parameter_name=$default_value
 	fi
+}
+
+function create_response()
+{
+	minecraftname="$1"
+	rconpassword="$2"
+	server_version="$3"
+	use_forge="$4"
+	minecraft_folder="$5"
+	minecraft_user="$6"
+	openjdk_version="$7"
+	mcron_version="$8"
+	fs_ram_mb="$9"
+	levelseed="$10"
+	dropboxserver="$11"
+	dropboxuser="$12"
+
+
+	cat <<EOS > $minecraft_folder/tools/response
+$minecraftname
+$rconpassword
+$server_version
+$use_forge
+$minecraft_folder
+$minecraft_user
+$openjdk_version
+$mcron_version
+$fs_ram_mb
+$levelseed
+$dropboxserver
+$dropboxuser
+EOS
+
 }
 
 default_server_version="latest"
@@ -303,7 +336,11 @@ useradd -r -m -U -d $minecraft_folder -s /bin/bash $minecraft_user
 echo -e "tmpfs       $minecraft_folder/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=$default_fs_ram_mb\M   0 0" >> /etc/fstab
 
 mkdir -p $minecraft_folder/{backups,tools,server,logs}
-wget -O "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" "https://github.com/Tiiffi/mcrcon/releases/download/v$mcron_version/mcrcon-$mcron_version-linux-x86-64.tar.gz" && tar -xzf "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && rm "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && find -name mcrcon -exec cp {} $minecraft_folder/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
+wget -O "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" "https://github.com/Tiiffi/mcrcon/releases/download/v$mcron_version/mcrcon-$mcron_version-linux-x86-64.tar.gz"
+tar -xzf "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz"
+rm "$minecraft_folder/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz"
+find -name mcrcon -exec cp {} $minecraft_folder/tools/ \;
+find / -type d -name "mcrcon*" -exec rm -rf {} \;
 
 echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * $minecraft_user $minecraft_folder/tools/backup.sh > \"$backuplog\"" > /etc/cron.d/$minecraftname_backup
 echo > "$backuplog"
@@ -313,6 +350,7 @@ echo "$minecraft_user ALL=(root) NOPASSWD: /usr/bin/mount $minecraft_folder/serv
 create_start "$minecraftname" "$rconpassword" "$server_version" "$use_forge" "$minecraft_folder" "$minecraft_user" "$levelseed" "$fs_ram_mb"
 create_backup_tool "$minecraftname" "$rconpassword" "$dropboxserver" "$dropboxuser"
 create_service "$minecraftname" "$rconpassword"
+create_response "$minecraftname" "$rconpassword" "$server_version" "$use_forge" "$minecraft_folder" "$minecraft_user" "$openjdk_version" "$mcron_version" "$fs_ram_mb" "$levelseed" "$dropboxserver" "$dropboxuser"
 
 chmod -R ug+x $minecraft_folder/tools/*.sh
 chown -R $minecraft_user:$minecraft_user $minecraft_folder/
