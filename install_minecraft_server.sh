@@ -247,6 +247,7 @@ function validate_parameter()
 	default_value="$2"
 	message="$3"
 	require="$4"
+	parameter_value="$(eval "echo \$$parameter_name")"
 
 	if [ "$require" == "true" ]
 	then
