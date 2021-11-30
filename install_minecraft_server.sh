@@ -251,21 +251,25 @@ function validate_parameter()
 	if [ "$require" == "true" ]
 	then
 		minecraftname="$default_value"
+	elif [ "$parameter_value" == "" ]
+	then
+		read -p "$minecraftname -> $message: " $parameter_name
+		parameter_value="$(eval "echo \$$parameter_name")"
 	fi
-
-	read -p "$minecraftname -> $message: " $parameter_name
-	parameter_value="$(eval "echo \$$parameter_name")"
 
 	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
 	then
-		if [ "$default_value" == "" ]
-		then
-			echo "parameter $parameter_name is require"
-			echo "Exiting"
-			exit 1
-		fi
-		export $parameter_name=$default_value
+		echo "parameter $parameter_name is require"
+		echo "Exiting"
+		exit 1
+	elif [ "$parameter_value" == "" ]
+	then
+		echo "parameter $parameter_name is nil"
+		echo "Exiting"
+		exit 2
 	fi
+
+	$parameter_name=$default_value
 }
 
 function create_response()
