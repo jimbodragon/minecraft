@@ -264,7 +264,7 @@ function validate_parameter()
 			echo "Exiting"
 			exit 1
 		fi
-		$parameter_name=$default_value
+		export $parameter_name=$default_value
 	fi
 }
 
