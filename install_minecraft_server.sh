@@ -244,19 +244,16 @@ EOS
 function validate_parameter()
 {
 	parameter_name="$1"
-	parameter_value="$(eval "echo -n \$$parameter_name")"
 	default_value="$2"
-
-	if [ "$parameter_name" == "minecraftname" ]
-	then
-		message="Minecraft -> $3"
-	else
-		message="$minecraftname -> $3: "
-	fi
-
+	message="$3"
 	require="$4"
 
-	read -p "$message" $parameter_name
+	if [ "$require" == "true" ]
+	then
+		minecraftname="$default_value"
+	fi
+
+	read -p "$minecraftname -> $message: " $parameter_name
 	parameter_value="$(eval "echo \$$parameter_name")"
 
 	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
@@ -312,11 +309,11 @@ default_openjdk_version="18"
 default_minecraft_user="minecraft"
 default_fs_ram_mb="4096"
 
-validate_parameter minecraftname "" "Minecraft Instance name" true
-validate_parameter rconpassword "" "Minecraft mcrcon password" true
+validate_parameter minecraftname "Minecraft" "Minecraft Instance name" true
+validate_parameter rconpassword "$minecraftname" "Minecraft mcrcon password" true
 validate_parameter server_version "$default_server_version" "server version (empty for $default_server_version)"
 validate_parameter use_forge "$default_use_forge" "use forge server (true to activate)"
-validate_parameter minecraft_folder "$default_minecraft_folder" "install folder (empty for$default_minecraft_folder)"
+validate_parameter minecraft_folder "$default_minecraft_folder" "install folder (empty for $default_minecraft_folder)"
 validate_parameter minecraft_user "$default_minecraft_user" "user (empty for $default_minecraft_user)"
 
 validate_parameter openjdk_version "$default_openjdk_version" "openjdk version (empty for $default_openjdk_version)"
