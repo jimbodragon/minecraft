@@ -1,50 +1,54 @@
 #/bin/bash
 
+minecraft_home="/opt/minecraft"
+
 function create_start()
 {
 	cat <<EOS > /opt/minecraft/tools/start.sh
 #!/bin/bash
 function check_version_and_download()
 {
-	if [ \$1 > \$2 ]
+	if [ "\$2" == ""]
 	then
-		wget -O /opt/minecraft/server/server.jar \$3
-		echo "\$4" > /opt/minecraft/server/server.version
+		if [ \$1 > \$2 ]
+		then
+			wget -O /opt/minecraft/server/server.jar \$3
+			echo "\$4" > /opt/minecraft/server/server.version
+		fi
 	fi
 }
 
 function check_update()
 {
-	major_version=\$(cut -d '.' -f 1 /opt/minecraft/server/server.version)
-	minor_version=\$(cut -d '.' -f 2 /opt/minecraft/server/server.version)
-	bugfix_version=\$(cut -d '.' -f 3 /opt/minecraft/server/server.version)
+	major_version=\$(cut -d '.' -f 1 /opt/minecraft/server/server.version 2>&1)
+	minor_version=\$(cut -d '.' -f 2 /opt/minecraft/server/server.version 2>&1)
+	bugfix_version=\$(cut -d '.' -f 3 /opt/minecraft/server/server.version 2>&1)
 
-	webinfo=\$(wget -q -O /dev/stdout https://www.minecraft.net/fr-ca/download/server/ | grep 'minecraft_server.' > webinfo)
-	webversion=\$(cat webinfo | tail -n 1 | awk -F 'minecraft_server.' '{print \$2}' | awk -F '.jar' '{print \$1}')
-	downloadlink=\$(cat webinfo | awk -F 'href="' '{print \$2}' | cut -d '"' -f 1)
+	rm version_manifest.json
+	wget https://launchermeta.mojang.com/mc/game/version_manifest.json
+	latest_version=\$(jq .latest.release version_manifest.json)
+	wget \$(jq ".versions[] | select(.id == \"\$latest_version\")" version_manifest.json | jq .url | cut -d '"' -f 2)
+	downloadlink=\$(jq .downloads.server.url \$latest_version.json)
 
-	latest_major_version=\$(echo "\$webversion" | cut -d '.' -f 1)
-	latest_minor_version=\$(echo "\$webversion" | cut -d '.' -f 2)
-	latest_bugfix_version=\$(echo "\$webversion" | cut -d '.' -f 3)
+	latest_major_version=\$(echo "\$latest_version" | cut -d '.' -f 1)
+	latest_minor_version=\$(echo "\$latest_version" | cut -d '.' -f 2)
+	latest_bugfix_version=\$(echo "\$latest_version" | cut -d '.' -f 3)
 
-	if [ \$latest_major_version -eq \$major_version ]
+	if [ "\$latest_major_version" -eq \$major_version" ]
 	then
-		if [ \$latest_minor_version -eq \$minor_version ]
+		if [ "\$latest_minor_version" -eq \$minor_version" ]
 		then
-			check_version_and_download \$latest_bugfix_version \$bugfix_version \$downloadlink \$webversion
+			check_version_and_download "\$latest_bugfix_version" \$bugfix_version" \$downloadlink" "\$latest_version"
 		else
-			check_version_and_download \$latest_minor_version \$minor_version \$downloadlink \$webversion
+			check_version_and_download "\$latest_minor_version" \$minor_version" \$downloadlink" "\$latest_version"
 		fi
 	else
-		check_version_and_download \$latest_major_version \$major_version \$downloadlink \$webversion
+		check_version_and_download "\$latest_major_version" "\$major_version" "\$downloadlink" "\$latest_version"
 	fi
 }
 
 function check_server()
 {
-	#https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar
-	#1.15.2: https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar
-
 	if [ ! -f /opt/minecraft/server/eula.txt ]
 	then
 		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > /opt/minecraft/server/eula.txt
@@ -99,8 +103,12 @@ enable-rcon=true
 motd=La Communaute de $1
 #level-seed=
 EOF
-
-		echo "0.0.0" > /opt/minecraft/server/server.version
+		if [ "\$1" == ""]
+		then
+			echo "\$1" > /opt/minecraft/server/server.version
+		else
+			echo "0.0.0" > /opt/minecraft/server/server.version
+		fi
 	fi
 }
 
@@ -118,8 +126,8 @@ function check_mount()
 
 function revert_backup()
 {
-        cd /opt/minecraft/server
-        backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
+    cd /opt/minecraft/server
+    backup_file="/opt/minecraft/backups/server-$1-minecraft.tar.gz"
 		if [ -f \$backup_file ]
 		then
 			tar -xzf \$backup_file
@@ -203,29 +211,34 @@ read -p 'Minecraft mcrcon password: ' rconpassword
 read -p 'Minecraft Dropbox server for backup: ' dropboxserver
 read -p 'Minecraft Dropbox user for backup: ' dropboxuser
 read -p 'Minecraft level seed: ' levelseed
+read -p 'Minecraft server version (empty for latest): ' server_version
+read -p 'Minecraft server forge version if any: ' forge_server_version
+read -p 'Minecraft use latest version if any: ' use_latest
+read -p 'Minecraft use latest version if any: ' mcron_version
 backuplog=/var/log/$minecraftname.backup.log
 
-echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed"
+echo -e "minecraftname = $minecraftname\nrconpassword = $rconpassword\ndropboxserver = $dropboxserver\ndropboxuser = $dropboxuser\nlevelseed = $levelseed\nserver_version = $server_version\nforge_server_version = $forge_server_version\nmcron_version = $mcron_version"
 
 apt-get install openjdk-17-jre-headless htop sudo  net-tools
 useradd -r -m -U -d /opt/minecraft -s /bin/bash minecraft
 echo "tmpfs       /opt/minecraft/server/ tmpfs   nodev,nosuid,noexec,nodiratime,size=4096M   0 0" >> /etc/fstab
 
 mkdir -p /opt/minecraft/{backups,tools,server}
-wget -O /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz https://github.com/Tiiffi/mcrcon/releases/download/v0.7.1/mcrcon-0.7.1-linux-x86-64.tar.gz && tar -xzf /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz && rm /opt/minecraft/tools/mcrcon-0.7.1-linux-x86-64.tar.gz && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
+wget -O "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" "https://github.com/Tiiffi/mcrcon/releases/download/v$mcron_version/mcrcon-$mcron_version-linux-x86-64.tar.gz" && tar -xzf "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && rm "/opt/minecraft/tools/mcrcon-$mcron_version-linux-x86-64.tar.gz" && find -name mcrcon -exec cp {} /opt/minecraft/tools/ \; && find / -type d -name "mcrcon*" -exec rm -rf {} \;
 
-echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh > $backuplog" > /etc/cron.d/minecraft_backup
-echo > $backuplog
-chown minecraft:minecraft $backuplog
+echo "4,9,14,19,24,29,34,39,44,49,54,59 * * * * minecraft /opt/minecraft/tools/backup.sh > \"$backuplog\"" > /etc/cron.d/minecraft_backup
+echo > "$backuplog"
+chown minecraft:minecraft "$backuplog"
 echo "minecraft ALL=(root) NOPASSWD: /usr/bin/mount /opt/minecraft/server" > /etc/sudoers.d/minecraft
 
-create_start $minecraftname $rconpassword $levelseed
-create_backup_tool $minecraftname $rconpassword $dropboxserver $dropboxuser
-create_service $minecraftname $rconpassword
+create_start "$minecraftname" "$rconpassword" "$levelseed" "$server_version" "$forge_server_version" "$use_latest"
+create_backup_tool "$minecraftname" "$rconpassword" "$dropboxserver" "$dropboxuser"
+create_service "$minecraftname" "$rconpassword"
 
 chmod -R ug+x /opt/minecraft/tools/*.sh
 chown -R minecraft:minecraft /opt/minecraft/
-su - minecraft -c '/usr/bin/ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P ""' && sshkey=$(cat /opt/minecraft/.ssh/id_rsa.pub) && ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
+echo "Enter password for $dropboxuser@$dropboxserver"
+su - minecraft -c "/usr/bin/ssh-keygen -q -t rsa -f /opt/minecraft/.ssh/id_rsa -P ''" && sshkey=$(cat /opt/minecraft/.ssh/id_rsa.pub) && ssh $dropboxuser@$dropboxserver "echo '$sshkey' >> .ssh/authorized_keys"
 
 systemctl daemon-reload
 systemctl start $minecraftname.service
