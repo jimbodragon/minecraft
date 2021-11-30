@@ -251,7 +251,9 @@ function validate_parameter()
 	if [ "$require" == "true" ]
 	then
 		minecraftname="$default_value"
-	elif [ "$parameter_value" == "" ]
+	fi
+
+	if [ "$parameter_value" == "" ]
 	then
 		read -p "$minecraftname -> $message: " $parameter_name
 		parameter_value="$(eval "echo \$$parameter_name")"
