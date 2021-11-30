@@ -244,10 +244,11 @@ EOS
 function validate_parameter()
 {
 	parameter_name="$1"
-	parameter_value="$(eval "echo \$$parameter_name")"
+	parameter_value="$(eval "echo -n \$$parameter_name")"
 	default_value="$2"
 
 	if [ "$parameter_name" == "minecraftname" ]
+	then
 		message="Minecraft -> $3"
 	else
 		message="$minecraftname -> $3: "
@@ -256,6 +257,7 @@ function validate_parameter()
 	require="$4"
 
 	read -p "$message" $parameter_name
+	parameter_value="$(eval "echo \$$parameter_name")"
 
 	if [ "$require" == "true" ] && [ "$parameter_value" == "" ]
 	then
