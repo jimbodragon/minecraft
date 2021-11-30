@@ -17,6 +17,10 @@ function create_start()
 #!/bin/bash
 function check_version_and_download()
 {
+	server_version="$server_version"
+	use_forge="$use_forge"
+	minecraft_folder="$minecraft_folder"
+
 	if [ "\$2" == ""]
 	then
 		if [ \$1 > \$2 ]
@@ -31,16 +35,23 @@ function check_update()
 {
 	server_version="$server_version"
 	use_forge="$use_forge"
+	minecraft_folder="$minecraft_folder"
 
-	major_version=\$(cut -d '.' -f 1 $minecraft_folder/server/server.version 2>&1)
-	minor_version=\$(cut -d '.' -f 2 $minecraft_folder/server/server.version 2>&1)
-	bugfix_version=\$(cut -d '.' -f 3 $minecraft_folder/server/server.version 2>&1)
+	major_version=\$(cut -d '.' -f 1 \$minecraft_folder/server/server.version 2>&1)
+	minor_version=\$(cut -d '.' -f 2 \$minecraft_folder/server/server.version 2>&1)
+	bugfix_version=\$(cut -d '.' -f 3 \$minecraft_folder/server/server.version 2>&1)
 
-	rm version_manifest.json
-	wget https://launchermeta.mojang.com/mc/game/version_manifest.json
-	latest_version=\$(jq .latest.release version_manifest.json)
-	wget \$(jq ".versions[] | select(.id == \"\$latest_version\")" version_manifest.json | jq .url | cut -d '"' -f 2)
-	downloadlink=\$(jq .downloads.server.url \$latest_version.json)
+	rm "\$minecraft_folder/version_manifest.json"
+	wget -O "\$minecraft_folder/version_manifest.json" https://launchermeta.mojang.com/mc/game/version_manifest.json
+
+	if [ "\$server_version" == "latest" ] && [ "\$use_forge" != "true" ]
+	then
+		latest_version=\$(jq .latest.release "\$minecraft_folder/version_manifest.json")
+	elif [ "\$server_version" != "latest" ]
+		latest_version=\$server_version
+	fi
+
+	downloadlink="\$(wget -O - "$(jq ".versions[] | select(.id == \\\"\$latest_version\\\")" "\$minecraft_folder/version_manifest.json" | jq .url | cut -d '\"' -f 2)" | jq .downloads.server.url | cut -d '\"' -f 2)"
 
 	latest_major_version=\$(echo "\$latest_version" | cut -d '.' -f 1)
 	latest_minor_version=\$(echo "\$latest_version" | cut -d '.' -f 2)
@@ -61,16 +72,20 @@ function check_update()
 
 function check_server()
 {
-	if [ ! -f $minecraft_folder/server/eula.txt ]
+	server_version="$server_version"
+	use_forge="$use_forge"
+	minecraft_folder="$minecraft_folder"
+
+	if [ ! -f \$minecraft_folder/server/eula.txt ]
 	then
-		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > $minecraft_folder/server/eula.txt
+		echo -e "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\neula=true" > \$minecraft_folder/server/eula.txt
 
 	fi
 
-	if [ ! -f $minecraft_folder/server/server.properties ]
+	if [ ! -f \$minecraft_folder/server/server.properties ]
 	then
-		cat <<EOF > $minecraft_folder/server/server.properties
-#Minecraft server properties for $minecraftname
+		cat <<EOF > \$minecraft_folder/server/server.properties
+#Minecraft server properties for \$minecraftname
 spawn-protection=16
 max-tick-time=60000
 query.port=25565
@@ -105,47 +120,49 @@ view-distance=10
 resource-pack=
 spawn-animals=true
 white-list=false
-rcon.password=$rconpassword
+rcon.password=\$rconpassword
 generate-structures=true
 max-build-height=256
 online-mode=false
 use-native-transport=true
 prevent-proxy-connections=false
 enable-rcon=true
-motd=La Communaute de $minecraftname
+motd=La Communaute de \$minecraftname
 #level-seed=
 EOF
 		if [ "\$1" == ""]
 		then
-			echo "\$1" > $minecraft_folder/server/server.version
+			echo "\$1" > \$minecraft_folder/server/server.version
 		else
-			echo "0.0.0" > $minecraft_folder/server/server.version
+			echo "0.0.0" > \$minecraft_folder/server/server.version
 		fi
 	fi
 }
 
 function check_mount()
 {
-        num_mount=\$(df -h | grep $minecraft_folder/server | wc -l)
-        if [ \$num_mount -eq 0 ]
-        then
-                sudo /usr/bin/mount $minecraft_folder/server
-                return 0
-        fi
+	minecraft_folder="$minecraft_folder"
+	num_mount=\$(df -h | grep $minecraft_folder/server | wc -l)
+	if [ \$num_mount -eq 0 ]
+	then
+	        sudo /usr/bin/mount $minecraft_folder/server
+	        return 0
+	fi
 
-        return 1
+	return 1
 }
 
 function revert_backup()
 {
-    cd $minecraft_folder/server
-    backup_file="$minecraft_folder/backups/server-$1-minecraft.tar.gz"
-		if [ -f \$backup_file ]
-		then
-			tar -xzf \$backup_file
-			mv $minecraft_folder/server$minecraft_folder/server/* $minecraft_folder/server/
-			rm -rf $minecraft_folder/server/opt
-		fi
+	minecraft_folder="$minecraft_folder"
+  cd $minecraft_folder/server
+  backup_file="$minecraft_folder/backups/server-$1-minecraft.tar.gz"
+	if [ -f \$backup_file ]
+	then
+		tar -xzf \$backup_file
+		mv $minecraft_folder/server$minecraft_folder/server/* $minecraft_folder/server/
+		rm -rf $minecraft_folder/server/opt
+	fi
 }
 
 check_mount
